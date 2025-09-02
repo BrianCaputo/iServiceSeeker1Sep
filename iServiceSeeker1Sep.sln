@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iServiceSeeker1Sep", "iServiceSeeker1Sep\iServiceSeeker1Sep.csproj", "{43EC22F8-39C9-4DFF-9CB0-7A6AF6EF0B30}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{43EC22F8-39C9-4DFF-9CB0-7A6AF6EF0B30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43EC22F8-39C9-4DFF-9CB0-7A6AF6EF0B30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43EC22F8-39C9-4DFF-9CB0-7A6AF6EF0B30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43EC22F8-39C9-4DFF-9CB0-7A6AF6EF0B30}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ABBF2574-20C9-4A6F-B244-3498AB37F2B2}
+	EndGlobalSection
+EndGlobal
