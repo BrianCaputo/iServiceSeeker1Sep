@@ -6,6 +6,7 @@
 @using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
 @using iServiceSeeker1Sep.Data
+@using Net.Codecrete.QrCodeGenerator
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityUserAccessor UserAccessor
@@ -38,9 +39,17 @@ else
             </li>
             <li>
                 <p>Scan the QR Code or enter this key <kbd>@sharedKey</kbd> into your two factor authenticator app. Spaces and casing do not matter.</p>
-                <div class="alert alert-info">Learn how to <a href="https://go.microsoft.com/fwlink/?Linkid=852423">enable QR code generation</a>.</div>
-                <div></div>
-                <div data-url="@authenticatorUri"></div>
+
+                @if (qrCodeAsSvg is not null)
+                {
+                    <div class="my-3" style="max-width: 250px;">
+                        @((MarkupString)qrCodeAsSvg)
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">Generating QR code...</div>
+                }
             </li>
             <li>
                 <p>
@@ -73,6 +82,7 @@ else
     private ApplicationUser user = default!;
     private string? sharedKey;
     private string? authenticatorUri;
+    private string? qrCodeAsSvg; // Variable to hold the QR code SVG
     private IEnumerable<string>? recoveryCodes;
 
     [CascadingParameter]
@@ -84,8 +94,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         user = await UserAccessor.GetRequiredUserAsync(HttpContext);
-
-        await LoadSharedKeyAndQrCodeUriAsync(user);
+        await LoadSharedKeyAndQrCodeAsync(user);
     }
 
     private async Task OnValidSubmitAsync()
@@ -118,20 +127,24 @@ else
         }
     }
 
-    private async ValueTask LoadSharedKeyAndQrCodeUriAsync(ApplicationUser user)
+    private async ValueTask LoadSharedKeyAndQrCodeAsync(ApplicationUser user)
     {
         // Load the authenticator key & QR code URI to display on the form
         var unformattedKey = await UserManager.GetAuthenticatorKeyAsync(user);
         if (string.IsNullOrEmpty(unformattedKey))
         {
             await UserManager.ResetAuthenticatorKeyAsync(user);
-            unformattedKey = await UserManager.GetAuthenticatorKeyAsync(user);
+            unformattedKey = await UserManager.GetAuthenticatorKeyAsync(user)!;
         }
 
-        sharedKey = FormatKey(unformattedKey!);
+        sharedKey = FormatKey(unformattedKey);
 
         var email = await UserManager.GetEmailAsync(user);
-        authenticatorUri = GenerateQrCodeUri(email!, unformattedKey!);
+        authenticatorUri = GenerateQrCodeUri(email!, unformattedKey);
+
+        // Generate the QR code as an SVG string
+        var qrCode = QrCode.EncodeText(authenticatorUri, QrCode.Ecc.Medium);
+        qrCodeAsSvg = qrCode.ToSvgString(4); // 4 is the border size
     }
 
     private string FormatKey(string unformattedKey)
@@ -153,10 +166,13 @@ else
 
     private string GenerateQrCodeUri(string email, string unformattedKey)
     {
+        // The name of your application. This will be displayed in the authenticator app.
+        const string issuer = "iServiceSeeker1Sep";
+
         return string.Format(
             CultureInfo.InvariantCulture,
             AuthenticatorUriFormat,
-            UrlEncoder.Encode("Microsoft.AspNetCore.Identity.UI"),
+            UrlEncoder.Encode(issuer),
             UrlEncoder.Encode(email),
             unformattedKey);
     }

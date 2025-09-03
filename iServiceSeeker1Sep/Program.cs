@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using iServiceSeeker1Sep.Services;
+using Microsoft.AspNetCore.Authentication;
+using AspNet.Security.OAuth.LinkedIn;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,11 +21,49 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = IdentityConstants.ApplicationScheme;
-        options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-    })
-    .AddIdentityCookies();
+{
+    options.DefaultScheme = IdentityConstants.ApplicationScheme;
+    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+}).AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+    options.SaveTokens = true;
+
+    // Important: Set the callback path
+    options.CallbackPath = "/signin-google";
+
+    options.Scope.Add("profile");
+    options.Scope.Add("email");
+    options.ClaimActions.MapJsonKey("picture", "picture");
+})
+/*.AddMicrosoftAccount(MicrosoftAccountDefaults.AuthenticationScheme, options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Microsoft:ClientId"];
+    options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"];
+    options.SaveTokens = true;
+
+    // Optional: Add additional scopes
+    options.Scope.Add("https://graph.microsoft.com/user.read");
+
+    // Optional: Map additional claims
+    options.ClaimActions.MapJsonKey("picture", "picture");
+    options.ClaimActions.MapJsonKey("locale", "locale");
+})*/
+.AddLinkedIn(LinkedInAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.ClientId = builder.Configuration["Authentication:LinkedIn:ClientId"];
+    options.ClientSecret = builder.Configuration["Authentication:LinkedIn:ClientSecret"];
+    options.Scope.Clear();
+    options.Scope.Add("openid");
+    options.Scope.Add("profile");
+    options.Scope.Add("email");
+    options.SaveTokens = true;
+
+    // Map LinkedIn claims
+    options.ClaimActions.MapJsonKey("picture", "profilePicture");
+    options.ClaimActions.MapJsonKey("locale", "locale");
+}).AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
