@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity.UI.Services;
+﻿using iServiceSeeker1Sep.Services;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
-using SendGrid;
-using SendGrid.Helpers.Mail;
+using MimeKit;
 
 namespace iServiceSeeker1Sep.Services;
 
@@ -16,35 +18,84 @@ public class EmailSender : IEmailSender
         _logger = logger;
     }
 
-    public AuthMessageSenderOptions Options { get; } //Set with Secret Manager.
+    public AuthMessageSenderOptions Options { get; }
 
     public async Task SendEmailAsync(string toEmail, string subject, string message)
     {
-        if (string.IsNullOrEmpty(Options.SendGridKey))
+        if (string.IsNullOrEmpty(Options.SmtpServer))
         {
-            throw new Exception("Null SendGridKey");
+            throw new Exception("SMTP Server not configured");
         }
-        await Execute(Options.SendGridKey, subject, message, toEmail);
+
+        if (string.IsNullOrEmpty(Options.SmtpUsername) || string.IsNullOrEmpty(Options.SmtpPassword))
+        {
+            throw new Exception("SMTP credentials not configured");
+        }
+
+        await ExecuteAsync(toEmail, subject, message);
     }
 
-    public async Task Execute(string apiKey, string subject, string message, string toEmail)
+    private async Task ExecuteAsync(string toEmail, string subject, string message)
     {
-        var client = new SendGridClient(apiKey);
-        var msg = new SendGridMessage()
+        try
         {
-            From = new EmailAddress("Joe@contoso.com", "Password Recovery"),
-            Subject = subject,
-            PlainTextContent = message,
-            HtmlContent = message
-        };
-        msg.AddTo(new EmailAddress(toEmail));
+            _logger.LogInformation($"Starting email send to {toEmail}");
 
-        // Disable click tracking.
-        // See https://sendgrid.com/docs/User_Guide/Settings/tracking.html
-        msg.SetClickTracking(false, false);
-        var response = await client.SendEmailAsync(msg);
-        _logger.LogInformation(response.IsSuccessStatusCode
-                               ? $"Email to {toEmail} queued successfully!"
-                               : $"Failure Email to {toEmail}");
+            var email = new MimeMessage();
+            email.From.Add(new MailboxAddress(Options.FromName, Options.FromEmail));
+            email.To.Add(new MailboxAddress("", toEmail));
+            email.Subject = subject;
+
+            var bodyBuilder = new BodyBuilder
+            {
+                HtmlBody = message,
+                TextBody = StripHtml(message) // Provide plain text fallback
+            };
+            email.Body = bodyBuilder.ToMessageBody();
+
+            using var client = new SmtpClient();
+
+            // Connect with appropriate security options
+            SecureSocketOptions secureSocketOptions;
+            if (Options.SmtpPort == 465)
+            {
+                secureSocketOptions = SecureSocketOptions.SslOnConnect; // Implicit SSL
+            }
+            else if (Options.SmtpPort == 587)
+            {
+                secureSocketOptions = SecureSocketOptions.StartTls; // Explicit SSL
+            }
+            else
+            {
+                secureSocketOptions = Options.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None;
+            }
+
+            await client.ConnectAsync(Options.SmtpServer, Options.SmtpPort, secureSocketOptions);
+
+            // Authenticate
+            await client.AuthenticateAsync(Options.SmtpUsername, Options.SmtpPassword);
+
+            // Send the email
+            await client.SendAsync(email);
+
+            // Disconnect
+            await client.DisconnectAsync(true);
+
+            _logger.LogInformation($"Email to {toEmail} sent successfully via MailKit!");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"MailKit error sending email to {toEmail}: {ex.Message}");
+            throw;
+        }
+    }
+
+    private static string StripHtml(string html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return string.Empty;
+
+        // Simple HTML stripping for plain text fallback
+        return System.Text.RegularExpressions.Regex.Replace(html, "<.*?>", string.Empty);
     }
 }
