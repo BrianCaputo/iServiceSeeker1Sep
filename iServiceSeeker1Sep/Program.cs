@@ -70,6 +70,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+
+
+
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
@@ -90,7 +93,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated(); // This creates the database and tables
+    context.Database.EnsureCreated();
+    //context.Database.EnsureCreated(); // This creates the database and tables
 }
 
 // Configure the HTTP request pipeline.
@@ -104,6 +108,53 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+//TODO - need to fix the EF issue that allows user POCO to update and migrate properly
+
+// --- START: Database Reset and Seeding Logic (For Development Only) ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+        // WARNING: This is for development only. It deletes the database on every startup.
+        context.Database.EnsureDeleted();
+        context.Database.EnsureCreated();
+
+        // Seed the "Admin" role into the database if it doesn't exist.
+        if (!await roleManager.RoleExistsAsync("Admin"))
+        {
+            await roleManager.CreateAsync(new IdentityRole("Admin"));
+        }
+
+        // Create a default admin user if one doesn't exist.
+        var adminUser = await userManager.FindByEmailAsync("admin@serviceseeker.com");
+        if (adminUser == null)
+        {
+            adminUser = new ApplicationUser
+            {
+                UserName = "admin@serviceseeker.com",
+                Email = "admin@serviceseeker.com",
+                FirstName = "Admin",
+                LastName = "User",
+                UserType = UserType.NotSet, // Or another default
+                EmailConfirmed = true // Confirm email immediately for the admin
+            };
+            // IMPORTANT: Use a strong, secure password from your secrets file in a real app!
+            await userManager.CreateAsync(adminUser, "AdminPassword1!");
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred creating and seeding the DB.");
+    }
+}
+// --- END: Database Reset and Seeding Logic ---
 
 app.UseHttpsRedirection();
 

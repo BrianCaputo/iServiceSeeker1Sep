@@ -1,4 +1,11 @@
 ﻿@inherits LayoutComponentBase
+@using iServiceSeeker1Sep.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
 
 <div class="page">
     <div class="sidebar">
@@ -6,10 +13,6 @@
     </div>
 
     <main>
-        @* <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div> *@
-
         <article class="content px-4">
             @Body
         </article>
@@ -21,3 +24,28 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationStateTask;
+        var user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            var appUser = await UserManager.GetUserAsync(user);
+            if (appUser is not null && !appUser.IsProfileComplete)
+            {
+                // Prevent a redirect loop
+                var currentUri = NavigationManager.Uri;
+                if (!currentUri.Contains("/complete-profile") && !currentUri.Contains("/Account/Logout"))
+                {
+                    NavigationManager.NavigateTo("/complete-profile");
+                }
+            }
+        }
+    }
+}

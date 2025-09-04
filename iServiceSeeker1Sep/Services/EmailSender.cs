@@ -76,7 +76,7 @@ public class EmailSender : IEmailSender
             await client.AuthenticateAsync(Options.SmtpUsername, Options.SmtpPassword);
 
             // Send the email
-            await client.SendAsync(email);
+                await client.SendAsync(email);
 
             // Disconnect
             await client.DisconnectAsync(true);
