@@ -63,19 +63,15 @@ builder.Services.AddAuthentication(options =>
     // Map LinkedIn claims
     options.ClaimActions.MapJsonKey("picture", "profilePicture");
     options.ClaimActions.MapJsonKey("locale", "locale");
-}).AddIdentityCookies();
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-
-
-
-builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddSignInManager()
     .AddDefaultTokenProviders();
 
 //builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
@@ -90,12 +86,12 @@ builder.Services.Configure<AuthMessageSenderOptions>(builder.Configuration);
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-    //context.Database.EnsureCreated(); // This creates the database and tables
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    context.Database.EnsureCreated();
+//    //context.Database.EnsureCreated(); // This creates the database and tables
+//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -121,8 +117,8 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
         // WARNING: This is for development only. It deletes the database on every startup.
-        context.Database.EnsureDeleted();
-        context.Database.EnsureCreated();
+     //   context.Database.EnsureDeleted();
+       // context.Database.EnsureCreated();
 
         // Seed the "Admin" role into the database if it doesn't exist.
         if (!await roleManager.RoleExistsAsync("Admin"))
@@ -155,17 +151,10 @@ using (var scope = app.Services.CreateScope())
     }
 }
 // --- END: Database Reset and Seeding Logic ---
-
 app.UseHttpsRedirection();
-
-
 app.UseAntiforgery();
-
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-// Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
-
 app.Run();
