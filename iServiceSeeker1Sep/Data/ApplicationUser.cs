@@ -174,6 +174,8 @@ namespace iServiceSeeker1Sep.Data
         // --- Relationships ---
         public ICollection<CompanyMembership> Members { get; set; } = new List<CompanyMembership>();
         public ICollection<ServiceCategory> ServiceCategories { get; set; } = new List<ServiceCategory>();
+        [StringLength(8)]
+        public string? InviteCode { get; set; }
 
     }
     public class ServiceProviderProfile

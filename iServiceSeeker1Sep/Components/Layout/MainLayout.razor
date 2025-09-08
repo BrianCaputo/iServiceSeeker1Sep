@@ -24,10 +24,8 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
-
-@code {
-    [CascadingParameter]
-    private Task<AuthenticationState> authenticationStateTask { get; set; } = default!;
+@* @code {
+    
 
     protected override async Task OnInitializedAsync()
     {
@@ -44,6 +42,36 @@
                 if (!currentUri.Contains("/complete-profile") && !currentUri.Contains("/Account/Logout"))
                 {
                     NavigationManager.NavigateTo("/complete-profile");
+                }
+            }
+        }
+    }
+} *@
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; } = default!;
+
+    // Use OnAfterRenderAsync for navigation checks
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Only run this logic on the first render
+        if (firstRender)
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated)
+            {
+                var appUser = await UserManager.GetUserAsync(user);
+
+                // Now it's safe to navigate
+                if (appUser != null && !appUser.IsProfileComplete)
+                {
+                    // Check to prevent a redirect loop if we are already on the target page
+                    if (new Uri(NavigationManager.Uri).AbsolutePath != "/complete-profile")
+                    {
+                        NavigationManager.NavigateTo("/complete-profile");
+                    }
                 }
             }
         }
