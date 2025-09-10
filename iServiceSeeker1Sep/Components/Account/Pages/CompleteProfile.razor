@@ -8,6 +8,7 @@
 @inject NavigationManager NavigationManager
 @inject ApplicationDbContext DbContext
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<CompleteProfile> Logger
 
 @rendermode InteractiveServer
 
@@ -15,280 +16,272 @@
 
 <AuthorizeView>
     <Authorized Context="Auth">
-        <h1>Complete Your Profile</h1>
-        <p>Welcome! Before you can continue, please provide a few more details to get your account set up correctly.</p> 
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        <h1 class="card-title text-center mb-4">Complete Your Profile</h1>
+                        <p class="text-center text-muted mb-4">Welcome, @Auth.User.Identity?.Name! Let's get your account set up.</p>
 
-        <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="completeProfile">
-            <DataAnnotationsValidator />
-
-            @if (formErrors.Any())
-            {
-                <div class="alert alert-danger" role="alert">
-                    <ValidationSummary />
-                    <ul>
-                        @foreach (var error in formErrors)
+                        @if (!string.IsNullOrEmpty(errorMessage))
                         {
-                            <li>@error</li>
+                            <div class="alert alert-danger" role="alert">
+                                @errorMessage
+                            </div>
                         }
-                    </ul>
-                </div>
-            }
 
+                        <EditForm Model="Model" OnValidSubmit="HandleValidSubmit" FormName="completeProfile">
+                            <DataAnnotationsValidator />
 
-            @* --- Step 1: Choose Primary Role --- *@
-            @if (currentStep == FormStep.SelectRole)
-            {
-                <div class="card mb-4">
-                    <div class="card-header">Step 1: Choose Your Role</div>
-                    <div class="card-body">
-                        <p>How will you primarily be using our service?</p>
-                        <InputRadioGroup @bind-Value="Model.UserType">
-                            <div class="form-check mb-2">
-                                <InputRadio id="endUser" Value="UserType.EndUser" class="form-check-input" /> 
-                                <label for="endUser" class="form-check-label">I'm looking for service providers (e.g., a homeowner).</label>
-                            </div> 
-                            <div class="form-check">
-                                <InputRadio id="serviceProvider" Value="UserType.ServiceProvider" class="form-check-input" />
-                                <label for="serviceProvider" class="form-check-label">I am a service provider or part of a service company.</label>
-                            </div>
-                        </InputRadioGroup>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-primary" @onclick="GoToNextStep" disabled="@(Model.UserType == UserType.NotSet)">Next</button>
-            }
-
-            @* --- Step 2 (Service Provider Only): New or Existing Company --- *@
-            @if (currentStep == FormStep.ProviderType)
-            {
-                <div class="card mb-4">
-                    <div class="card-header">Step 2: Service Provider Setup</div>
-                    <div class="card-body">
-                        <p>Are you setting up a new company profile or joining an existing one?</p>
-                        <InputRadioGroup @bind-Value="Model.ProviderOption">
-                            <div class="form-check mb-2">
-                                <InputRadio id="createNew" Value="ServiceProviderOption.CreateNew" class="form-check-input" />
-                                <label for="createNew" class="form-check-label">Create a <strong>new</strong> company profile.</label>
-                            </div>
-                            <div class="form-check">
-                                <InputRadio id="joinExisting" Value="ServiceProviderOption.JoinExisting" class="form-check-input" />
-                                <label for="joinExisting" class="form-check-label">Join an <strong>existing</strong> company using an invite code.</label>
-                            </div>
-                        </InputRadioGroup>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-secondary me-2" @onclick="GoToPreviousStep">Back</button>
-            <button type="button" class="btn btn-primary" @onclick="GoToNextStep" disabled="@(Model.ProviderOption == ServiceProviderOption.NotSet)">Next</button>
-            }
-
-@* --- Final Step: End User Address --- *@
-            @if (currentStep == FormStep.EndUserAddress)
-                    {
-            <div class="card">
-                <div class="card-header">Step 2: Add Your Primary Address</div> 
-                <div class="card-body">
-                    <div class="form-floating mb-3">
-                        <InputText @bind-Value="Model.StreetLine1" class="form-control" placeholder="Street Address" /> 
-                        <label>Street Address</label>
-                    </div>
-                    <div class="form-floating mb-3">
-                        <InputText @bind-Value="Model.City" class="form-control" placeholder="City" />
-                        <label>City</label>
-                    </div>
-                    <div class="form-floating mb-3">
-                        <InputText @bind-Value="Model.PostalCode" class="form-control" placeholder="Postal Code" /> 
-                        <label>Postal Code</label>
+                            @if (currentStep == 1)
+                            {
+                                <div class="text-center">
+                                    <h5 class="mb-3">How will you be using our platform?</h5>
+                                    <div class="d-grid gap-3">
+                                        <button type="button" class="btn btn-primary btn-lg" @onclick="() => SelectUserType(UserType.EndUser)">
+                                            I'm a Homeowner (or Client)
+                                        </button>
+                                        <button type="button" class="btn btn-success btn-lg" @onclick="() => SelectUserType(UserType.ServiceProvider)">
+                                            I'm a Service Provider
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else if (currentStep == 2 && Model.UserType == UserType.EndUser)
+                            {
+                                <h5 class="mb-3">Your Primary Address</h5>
+                                <div class="form-floating mb-3">
+                                    <select @bind="Model.CountryId" @bind:after="OnCountrySelected" @ValueChanged="OnCountrySelected()" class="form-select">
+                                        <option value="0">Select a country...</option>
+                                        @foreach (var country in countries)
+                                        {
+                                            <option value="@country.ID">@country.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputSelect @bind-Value="Model.StateProvinceId" class="form-select" disabled="@(Model.CountryId == 0)">
+                                        <option value="0">Select a state/province...</option>
+                                        @foreach (var state in filteredStates)
+                                        {
+                                            <option value="@state.ID">@state.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <label>State / Province</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText @bind-Value="Model.StreetLine1" class="form-control" placeholder="Street Address" />
+                                    <label>Street Address</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText @bind-Value="Model.StreetLine2" class="form-control" placeholder="Street Address2" />
+                                    <label>Street Address2</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText @bind-Value="Model.City" class="form-control" placeholder="City" />
+                                    <label>City</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText @bind-Value="Model.PostalCode" class="form-control" placeholder="Postal Code" />
+                                    <label>Postal Code</label>
+                                </div>
+                            }
+                            else if (currentStep == 2 && Model.UserType == UserType.ServiceProvider)
+                            {
+                                <h5 class="mb-3">Company Information</h5>
+                                <p>Are you joining an existing company or creating a new one?</p>
+                                <InputRadioGroup Name="supplierAction" @bind-Value="Model.SupplierAction">
+                                    <div class="form-check">
+                                        <InputRadio id="join" Value="SupplierActionType.Join" class="form-check-input" />
+                                        <label for="join" class="form-check-label">Join an existing company</label>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <InputRadio id="create" Value="SupplierActionType.Create" class="form-check-input" />
+                                        <label for="create" class="form-check-label">Create a new company profile</label>
+                                    </div>
+                                </InputRadioGroup>
+                                @if (Model.SupplierAction == SupplierActionType.Join)
+                                {
+                                    <div class="form-floating mb-3">
+                                        <InputText @bind-Value="Model.InvitationCode" class="form-control" placeholder="Invitation Code" />
+                                        <label>Invitation Code</label>
+                                        <div class="form-text">Your company administrator can provide this code.</div>
+                                    </div>
+                                }
+                            }
+                            else if (currentStep > 1)
+                            {
+                                <div class="mt-4 d-flex justify-content-between">
+                                    <button type="button" class="btn btn-secondary" @onclick="() => currentStep = 1">Back</button>
+                                    <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                        @if (isLoading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            <span> Saving...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Finish and Save Profile</span>
+                                        }
+                                    </button>
+                                </div>
+                            }
+                        </EditForm>
                     </div>
                 </div>
             </div>
-            <button type="button" class="btn btn-secondary mt-3 me-2" @onclick="GoToPreviousStep">Back</button>
-            <button type="submit" class="btn btn-success mt-3">Finish and Save Profile</button>
-            }
-
-            @* --- Final Step: Create Company --- *@
-            @if (currentStep == FormStep.CreateCompany)
-            {
-                <div class="card">
-                    <div class="card-header">Step 3: Company Details</div>
-                    <div class="card-body">
-                        <div class="form-floating mb-3">
-                            <InputText @bind-Value="Model.CompanyName" class="form-control" placeholder="Your Company Name" />
-                            <label>Your Company Name</label>
-                        </div>
-                        <small class="form-text text-muted">You can add more details like your address and license number after completing this initial setup.</small>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-secondary mt-3 me-2" @onclick="GoToPreviousStep">Back</button>
-                <button type="submit" class="btn btn-success mt-3">Create Company and Finish</button>
-            }
-
-            @* --- Final Step: Join Company --- *@
-            @if (currentStep == FormStep.JoinCompany)
-            {
-                <div class="card">
-                    <div class="card-header">Step 3: Join a Company</div>
-                    <div class="card-body">
-                        <div class="form-floating mb-3">
-                            <InputText @bind-Value="Model.InviteCode" class="form-control" placeholder="Company Invite Code" />
-                            <label>Company Invite Code</label>
-                        </div>
-                        <small class="form-text text-muted">This code is provided by the owner or an administrator of the company you wish to join.</small>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-secondary mt-3 me-2" @onclick="GoToPreviousStep">Back</button>
-                <button type="submit" class="btn btn-success mt-3">Join Company and Finish</button>
-            }
-        </EditForm>
+        </div>
     </Authorized>
     <NotAuthorized>
-        <RedirectToLogin />
+        <p>You must be logged in to complete your profile.</p>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
-    private FormStep currentStep = FormStep.SelectRole;
-    private List<string> formErrors = new();
+    private int currentStep = 1;
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    public string[] stateLabels = { "State", "Province", "Country" };
+    public string stateLabel = "Select a country";
+
+    public List<Country> countries = new();
+    public List<StateProvince> allStates = new();
+    public List<StateProvince> filteredStates = new();
+
+    private int selectedCountryId = 0;
+    private int selectedStateProvinceId = 0;
 
     [SupplyParameterFromForm]
     private ProfileCompleteModel Model { get; set; } = new();
 
-    private void GoToNextStep()
+    protected override async Task OnInitializedAsync()
     {
-        currentStep = currentStep switch
+        try
         {
-            FormStep.SelectRole => Model.UserType == UserType.EndUser ? FormStep.EndUserAddress : FormStep.ProviderType,
-            FormStep.ProviderType => Model.ProviderOption == ServiceProviderOption.CreateNew ? FormStep.CreateCompany : FormStep.JoinCompany,
-            _ => currentStep
-        };
+            // countries = await DbContext.Countries.OrderBy(c => c.Name).ToListAsync();
+            countries = iServiceSeeker1Sep.Services.LocationDataSeeder.GetCountries();
+            // allStates = await DbContext.StateProvinces.OrderBy(s => s.Name).ToListAsync();
+            allStates = iServiceSeeker1Sep.Services.LocationDataSeeder.GetStateProvinces();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading location data for profile completion.");
+            errorMessage = "Could not load necessary data. Please try again later.";
+        }
     }
 
-    private void GoToPreviousStep()
+    private async Task OnCountrySelected()
     {
-        currentStep = currentStep switch
+        if (Model.CountryId > 0)
         {
-            FormStep.EndUserAddress => FormStep.SelectRole,
-            FormStep.ProviderType => FormStep.SelectRole,
-            FormStep.CreateCompany => FormStep.ProviderType,
-            FormStep.JoinCompany => FormStep.ProviderType,
-            _ => currentStep
-        };
+            filteredStates.Clear();
+            // Filter states based on selected country  
+            filteredStates = allStates.Where(s => s.CountryID == Model.CountryId).ToList();
+            stateLabel=stateLabels[Model.CountryId - 1]; // Update state label based on selected country]
+        }
+        else
+        {
+            filteredStates.Clear();
+        }
+        Model.StateProvinceId = 0; // Reset state selection
+        await Task.CompletedTask; // Ensure async method signature
+    }
+
+    private void SelectUserType(UserType userType)
+    {
+        Model.UserType = userType;
+        currentStep = 2;
+    }
+
+    private void CountrySelected()
+    {
+        if (Model.CountryId > 0)
+        {
+            filteredStates = allStates.Where(s => s.CountryID == Model.CountryId).ToList();
+        }
+        else
+        {
+            filteredStates.Clear();
+        }
+        Model.StateProvinceId = 0; // Reset state selection
+        StateHasChanged(); // Ensure UI updates
     }
 
     private async Task HandleValidSubmit()
     {
-        formErrors.Clear();
+        isLoading = true;
+        errorMessage = null;
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(authState.User);
 
         if (user is null)
         {
             NavigationManager.NavigateTo("/Account/InvalidUser");
-            return; 
+            return;
         }
 
-        user.UserType = Model.UserType;
-
-        switch (Model.UserType)
+        try
         {
-            case UserType.EndUser:
-                if (user.EndUserProfile is null)
-                {
-                    user.EndUserProfile = new EndUserProfile(); 
-                }
-                var newAddress = new Address
+            user.UserType = (UserType)Model.UserType;
+
+            if (Model.UserType == UserType.EndUser)
+            {
+                var address  = new Address
                 {
                     Name = "Primary",
                     StreetLine1 = Model.StreetLine1,
+                    StreetLine2 = Model.StreetLine2,
                     City = Model.City,
                     PostalCode = Model.PostalCode,
-                    Purpose = AddressPurpose.Residiential,
-                    StateProvinceID = 1, // Placeholder: Replace with lookup [cite: 20]
+                    StateProvinceID = Model.StateProvinceId,
                 };
-                user.EndUserProfile.Address.Add(newAddress); 
-                break;
+            }
+            else if (Model.UserType == UserType.ServiceProvider)
+            {
+                // TODO: Implement logic for invitation code validation or new company creation
+            }
 
-            case UserType.ServiceProvider:
-                if (Model.ProviderOption == ServiceProviderOption.CreateNew)
-                {
-                    var newCompany = new Company
-                    {
-                        CompanyName = Model.CompanyName,
-                        // Generate a unique invite code here
-                        InviteCode = Guid.NewGuid().ToString().Substring(0, 8).ToUpper()
-                    };
-                    var membership = new CompanyMembership
-                    {
-                        ApplicationUser = user,
-                        Company = newCompany,
-                        Role = CompanyRole.Owner // First user is the owner
-                    };
-                    DbContext.Companies.Add(newCompany);
-                    DbContext.CompanyMemberships.Add(membership);
-                }
-                else if (Model.ProviderOption == ServiceProviderOption.JoinExisting)
-                {
-                    var company = await DbContext.Companies
-                        .FirstOrDefaultAsync(c => c.InviteCode == Model.InviteCode);
+            user.IsProfileComplete = true;
+            var result = await UserManager.UpdateAsync(user);
 
-                    if (company == null)
-                    {
-                        formErrors.Add("The invite code is not valid. Please check the code and try again.");
-                        return;
-                    }
-
-                    var membership = new CompanyMembership
-                    {
-                        ApplicationUser = user,
-                        Company = company,
-                        Role = CompanyRole.Employee // Default role when joining
-                    };
-                    DbContext.CompanyMemberships.Add(membership);
-                }
-                break;
+            if (result.Succeeded)
+            {
+                NavigationManager.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = $"Error: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            }
         }
-
-        user.IsProfileComplete = true;
-        await DbContext.SaveChangesAsync(); // Use DbContext to save related data first
-        var result = await UserManager.UpdateAsync(user);
-
-        if (result.Succeeded)
+        catch (Exception ex)
         {
-            NavigationManager.NavigateTo("/", forceLoad: true);
+            Logger.LogError(ex, "Error saving profile for user {UserId}", user.Id);
+            errorMessage = "A server error occurred while saving your profile. Please try again.";
         }
-        else
+        finally
         {
-            formErrors.AddRange(result.Errors.Select(e => e.Description));
+            isLoading = false;
         }
     }
 
-    // Enum for managing the form's current step for better readability
-    private enum FormStep { SelectRole, ProviderType, EndUserAddress, CreateCompany, JoinCompany }
-
-    // Enum for the service provider's choice
-    public enum ServiceProviderOption { NotSet, CreateNew, JoinExisting }
+    public enum SupplierActionType { NotSet, Join, Create }
 
     public class ProfileCompleteModel
     {
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Please select a primary role.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a role.")]
         public UserType UserType { get; set; } = UserType.NotSet;
+        public string? StreetLine1 { get; set; }
+        public string? StreetLine2 { get; set; }
+        public string? City { get; set; }
+        public string? PostalCode { get; set; }
+        public int CountryId { get; set; }
+        public int StateProvinceId { get; set; }
 
-        // --- Service Provider Fields ---
-        public ServiceProviderOption ProviderOption { get; set; } = ServiceProviderOption.NotSet;
-
-        [Required(ErrorMessage = "Company name is required.")]
-        [StringLength(100, ErrorMessage = "Company name is too long.")]
-        public string CompanyName { get; set; } = "";
-
-        [Required(ErrorMessage = "An invite code is required to join a company.")]
-        public string InviteCode { get; set; } = "";
-
-        // --- End User Fields ---
-        [Required]
-        public string StreetLine1 { get; set; } = ""; 
-        [Required]
-        public string City { get; set; } = ""; 
-        [Required]
-        [DataType(DataType.PostalCode)]
-        public string PostalCode { get; set; } = ""; 
+        // Service Provider Properties
+        public SupplierActionType SupplierAction { get; set; } = SupplierActionType.Join;
+        public string? InvitationCode { get; set; }
     }
 }

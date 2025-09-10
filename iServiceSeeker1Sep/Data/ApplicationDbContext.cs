@@ -1,6 +1,9 @@
+using iServiceSeeker.Data;
 using iServiceSeeker1Sep.Data;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Reflection.Emit;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
@@ -20,7 +23,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Address> Addresses { get; set; }
     public DbSet<Country> Countries { get; set; }
     public DbSet<StateProvince> StateProvinces { get; set; }
-
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -49,7 +51,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         // --- Configure the ServiceProviderServiceArea (Many-to-Many between ServiceProviderProfile and ServiceCategory) ---
         builder.Entity<ServiceProviderServiceArea>()
            .HasKey(spsa => spsa.Id);
-
         builder.Entity<ServiceProviderServiceArea>()
             .HasOne(spsa => spsa.ServiceProviderProfile)
             .WithMany(sp => sp.ServiceAreas)

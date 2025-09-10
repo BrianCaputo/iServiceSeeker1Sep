@@ -97,3 +97,12 @@ main {
         right: 0.75rem;
         top: 0.5rem;
     }
+.button-selector-shadow {
+    width: fit-content;
+    padding: 5%;
+    border: 2px solid black;
+    transition: box-shadow 0.3s ease;
+}
+        .button-selector-shadow:hover {
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+        }

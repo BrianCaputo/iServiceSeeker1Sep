@@ -1,0 +1,475 @@
+﻿@page "/complete-profile-2"
+
+@using iServiceSeeker1Sep.Data
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<CompleteProfile> Logger
+
+@rendermode InteractiveServer
+
+<PageTitle>Complete Your Profile</PageTitle>
+
+<AuthorizeView>
+    <Authorized Context="Auth">
+        <div class="container mt-4">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card shadow">
+                        <div class="card-body p-4">
+                            <h1 class="card-title text-center mb-4">Complete Your Profile</h1>
+                            <p class="text-center text-muted mb-4">Welcome, @Auth.User.Identity?.Name! Let's get your account set up.</p>
+                            
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    @errorMessage
+                                </div>
+                            }
+
+                            <EditForm Model="@Model" OnValidSubmit="HandleValidSubmit">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="text-danger mb-3" />
+
+                                <div class="profile-container">
+                                    @if(currentStep == 1)
+                                    {
+                                        <div class="step-content">
+                                            <h3 class="text-center mb-4">What describes you best?</h3>
+                                            <div class="d-grid gap-3">
+                                                <button type="button" class="btn btn-outline-primary btn-lg p-4 text-start" 
+                                                        @onclick="() => SelectUserType(UserType.EndUser)">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-3">
+                                                            <i class="fas fa-user fa-2x"></i>
+                                                        </div>
+                                                        <div>
+                                                            <strong>I am seeking services</strong>
+                                                            <br>
+                                                            <small class="text-muted">I need to find service providers</small>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                                
+                                                <button type="button" class="btn btn-outline-success btn-lg p-4 text-start" 
+                                                        @onclick="() => SelectUserType(UserType.ServiceProvider)">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-3">
+                                                            <i class="fas fa-briefcase fa-2x"></i>
+                                                        </div>
+                                                        <div>
+                                                            <strong>I am a service provider</strong>
+                                                            <br>
+                                                            <small class="text-muted">I offer services to customers</small>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if(currentStep == 2 && Model.UserType == UserType.EndUser)
+                                    {
+                                        <div class="step-content">
+                                            <h3 class="text-center mb-4">Your Address Information</h3>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="country" class="form-label">Country *</label>
+                                                    <InputSelect @bind-Value="Model.CountryId" class="form-select" @bind:after="OnCountryChanged" id="country">
+                                                        <option value="0">Select a country...</option>
+                                                        @foreach (var country in countries)
+                                                        {
+                                                            <option value="@country.ID">@country.Name</option>
+                                                        }
+                                                    </InputSelect>
+                                                    <ValidationMessage For="@(() => Model.CountryId)" class="text-danger" />
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="state" class="form-label">State/Province *</label>
+                                                    <InputSelect @bind-Value="Model.StateProvinceId" class="form-select" disabled="@(filteredStates.Count == 0)" id="state">
+                                                        <option value="0">@(Model.CountryId == 0 ? "Select a country first" : "Select state/province...")</option>
+                                                        @foreach (StateProvince state in filteredStates)
+                                                        {                                                          
+                                                            <option value="@state.ID">@state.Name</option>
+                                                        }
+                                                    </InputSelect>
+                                                    <ValidationMessage For="@(() => Model.StateProvinceId)" class="text-danger" />
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="street1" class="form-label">Street Address *</label>
+                                                <InputText @bind-Value="Model.StreetLine1" class="form-control" id="street1" placeholder="123 Main Street" />
+                                                <ValidationMessage For="@(() => Model.StreetLine1)" class="text-danger" />
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="street2" class="form-label">Apartment, Suite, etc. (Optional)</label>
+                                                <InputText @bind-Value="Model.StreetLine2" class="form-control" id="street2" placeholder="Apt 4B, Suite 200, etc." />
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="city" class="form-label">City *</label>
+                                                    <InputText @bind-Value="Model.City" class="form-control" id="city" placeholder="Your city" />
+                                                    <ValidationMessage For="@(() => Model.City)" class="text-danger" />
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="postal" class="form-label">Postal/Zip Code *</label>
+                                                    <InputText @bind-Value="Model.PostalCode" class="form-control" id="postal" placeholder="12345 or A1A 1A1" />
+                                                    <ValidationMessage For="@(() => Model.PostalCode)" class="text-danger" />
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex justify-content-between mt-4">
+                                                <button type="button" class="btn btn-secondary" @onclick="GoBackToStep1">
+                                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                                </button>
+                                                <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                                    @if (isLoading)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                        <span>Creating Profile...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Complete Profile</span>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if(currentStep == 2 && Model.UserType == UserType.ServiceProvider)
+                                    {
+                                        <div class="step-content">
+                                            <h3 class="text-center mb-4">Service Provider Setup</h3>
+                                            
+                                            <div class="mb-4">
+                                                <p class="text-center">Choose how you'd like to get started:</p>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <div class="card h-100">
+                                                            <div class="card-body text-center">
+                                                                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                                                                <h5>Join Existing Company</h5>
+                                                                <p class="text-muted">Use an invitation code to join an existing service provider company.</p>
+                                                                <button type="button" 
+                                                                        @onclick="() => SelectSupplierAction(SupplierActionType.Join)"
+                                                                        class="@(Model.SupplierAction == SupplierActionType.Join ? "btn btn-primary" : "btn btn-outline-primary")">
+                                                                    Select
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <div class="card h-100">
+                                                            <div class="card-body text-center">
+                                                                <i class="fas fa-building fa-3x text-success mb-3"></i>
+                                                                <h5>Create New Company</h5>
+                                                                <p class="text-muted">Start your own service provider company and invite team members.</p>
+                                                                <button type="button" 
+                                                                        @onclick="() => SelectSupplierAction(SupplierActionType.Create)"
+                                                                        class="@(Model.SupplierAction == SupplierActionType.Create ? "btn btn-success" : "btn btn-outline-success")">
+                                                                    Select
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (Model.SupplierAction == SupplierActionType.Join)
+                                            {
+                                                <div class="mb-3">
+                                                    <label for="inviteCode" class="form-label">Invitation Code *</label>
+                                                    <InputText @bind-Value="Model.InvitationCode" class="form-control" id="inviteCode" 
+                                                             placeholder="Enter your invitation code" />
+                                                    <ValidationMessage For="@(() => Model.InvitationCode)" class="text-danger" />
+                                                    <div class="form-text">Enter the invitation code provided by your company administrator.</div>
+                                                </div>
+                                            }
+
+                                            <div class="d-flex justify-content-between mt-4">
+                                                <button type="button" class="btn btn-secondary" @onclick="GoBackToStep1">
+                                                    <i class="fas fa-arrow-left me-2"></i>Back
+                                                </button>
+                                                <button type="submit" class="btn btn-primary" disabled="@(isLoading || Model.SupplierAction == SupplierActionType.NotSet)">
+                                                    @if (isLoading)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                        <span>Setting up...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Complete Setup</span>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="alert alert-warning text-center">
+                        <h4>Authentication Required</h4>
+                        <p>You must be logged in to complete your profile.</p>
+                        <a href="/Account/Login" class="btn btn-primary">Sign In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    .profile-container {
+        min-height: 400px;
+        border-radius: 15px;
+        border: 2px solid #dee2e6;
+        padding: 2rem;
+    }
+
+    .step-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        transition: transform 0.2s;
+    }
+
+    .card {
+        transition: box-shadow 0.2s;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+
+@code {
+    private int currentStep = 1;
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    private List<Country> countries = new List<Country>();
+    private List<StateProvince> states = new List<StateProvince>();
+    private List<StateProvince> filteredStates = new List<StateProvince>();
+
+    [SupplyParameterFromForm]
+    private ProfileCompleteModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            countries = await DbContext.Countries.ToListAsync();
+            states = await DbContext.StateProvinces.ToListAsync();
+            filteredStates=new List<StateProvince>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading location data for profile completion.");
+            errorMessage = "Could not load necessary data. Please try again later.";
+        }
+    }
+
+    private void SelectUserType(UserType userType)
+    {
+        Model.UserType = userType;
+        currentStep = 2;
+        StateHasChanged();
+    }
+
+    private void SelectSupplierAction(SupplierActionType action)
+    {
+        Model.SupplierAction = action;
+        StateHasChanged();
+    }
+
+    private void GoBackToStep1()
+    {
+        currentStep = 1;
+        // Reset the model to allow reselection
+        Model = new ProfileCompleteModel();
+        StateHasChanged();
+    }
+
+    private void OnCountryChanged()
+    {
+        if (Model.CountryId > 0)
+        {
+            filteredStates = states.Where(s => s.CountryID == Model.CountryId).ToList();
+            Model.StateProvinceId = 0; // Reset state/province selection
+        }
+        else
+        {
+            filteredStates.Clear();
+            Model.StateProvinceId = 0;
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+
+        if (user is null)
+        {
+            NavigationManager.NavigateTo("/Account/InvalidUser");
+            return;
+        }
+
+        try
+        {
+            user.UserType = Model.UserType;
+
+            if (Model.UserType == UserType.EndUser)
+            {
+                // Create and save the address
+                var address = new Address
+                {
+                    Name = "Primary",
+                    StreetLine1 = Model.StreetLine1,
+                    StreetLine2 = Model.StreetLine2,
+                    City = Model.City,
+                    PostalCode = Model.PostalCode,
+                    StateProvinceID = Model.StateProvinceId,
+                };
+
+                // Add the address to the context and save
+                DbContext.Addresses.Add(address);
+                await DbContext.SaveChangesAsync();
+
+                // Link the address to the user (assuming there's a relationship)
+                // You may need to adjust this based on your data model
+                // user.PrimaryAddressId = address.ID; // Example - adjust as needed
+            }
+            else if (Model.UserType == UserType.ServiceProvider)
+            {
+                if (Model.SupplierAction == SupplierActionType.Join)
+                {
+                    // TODO: Validate invitation code and link to existing company
+                    // This is where you would implement invitation code validation logic
+                }
+                else if (Model.SupplierAction == SupplierActionType.Create)
+                {
+                    // TODO: Create new company and make user the admin
+                    // This is where you would implement company creation logic
+                }
+            }
+
+            user.IsProfileComplete = true;
+            var result = await UserManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                NavigationManager.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = $"Error: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving profile for user {UserId}", user.Id);
+            errorMessage = "A server error occurred while saving your profile. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class ProfileCompleteModel
+    {
+        [Required(ErrorMessage = "Please select a role.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid role.")]
+        public UserType UserType { get; set; } = UserType.NotSet;
+
+        // Address properties for EndUser
+        
+        [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "Street address is required.")]
+        public string? StreetLine1 { get; set; }
+
+        public string? StreetLine2 { get; set; }
+
+        [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "City is required.")]
+        public string? City { get; set; }
+
+        [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "Postal code is required.")]
+        public string? PostalCode { get; set; }
+
+        [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "Please select a country.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid country.")]
+        public int CountryId { get; set; }
+
+        [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "Please select a state/province.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid state/province.")]
+        public int StateProvinceId { get; set; }
+
+        // Service Provider Properties
+        public SupplierActionType SupplierAction { get; set; } = SupplierActionType.NotSet;
+
+        [RequiredIf(nameof(SupplierAction), SupplierActionType.Join, ErrorMessage = "Invitation code is required to join a company.")]
+        public string? InvitationCode { get; set; }
+    }
+
+    public enum SupplierActionType { NotSet, Join, Create }
+    // Custom validation attribute for conditional required fields
+    public class RequiredIfAttribute : ValidationAttribute
+    {
+        private readonly string _propertyName;
+        private readonly object _desiredValue;
+
+        public RequiredIfAttribute(string propertyName, object desiredValue)
+        {
+            _propertyName = propertyName;
+            _desiredValue = desiredValue;
+        }
+
+        protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+        {
+            var instance = validationContext.ObjectInstance;
+            var type = instance.GetType();
+            var propertyValue = type.GetProperty(_propertyName)?.GetValue(instance, null);
+
+            if (propertyValue?.ToString() == _desiredValue.ToString())
+            {
+                if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
+                {
+                    return new ValidationResult(ErrorMessage);
+                }
+            }
+
+            return ValidationResult.Success;
+        }
+    }
+}
+

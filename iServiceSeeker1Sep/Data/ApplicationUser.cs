@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Net;
@@ -191,6 +192,7 @@ namespace iServiceSeeker1Sep.Data
 
         public bool IsVerified { get; set; } = false;
         public DateTime? VerifiedAt { get; set; }
+        [Precision(8,2)]
         public decimal ServiceRadius { get; set; } = 50; // miles
 
         [StringLength(1000)]

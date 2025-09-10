@@ -1,13 +1,14 @@
+using AspNet.Security.OAuth.LinkedIn;
+using iServiceSeeker.Data;
 using iServiceSeeker1Sep.Components;
 using iServiceSeeker1Sep.Components.Account;
 using iServiceSeeker1Sep.Data;
+using iServiceSeeker1Sep.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using iServiceSeeker1Sep.Services;
-using Microsoft.AspNetCore.Authentication;
-using AspNet.Security.OAuth.LinkedIn;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +84,8 @@ builder.Services.AddTransient<IEmailSender<ApplicationUser>>(provider =>
     new EmailSenderAdapter<ApplicationUser>(provider.GetRequiredService<IEmailSender>()));
 
 builder.Services.Configure<AuthMessageSenderOptions>(builder.Configuration);
+// **** Register the new database initializer service ****
+builder.Services.AddScoped<ApplicationDbInitializer>();
 
 var app = builder.Build();
 
@@ -157,4 +160,24 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapAdditionalIdentityEndpoints();
+// **** Run the database seeder ****
+await SeedDatabaseAsync(app);
+
 app.Run();
+
+
+async Task SeedDatabaseAsync(IHost app)
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var initializer = services.GetRequiredService<ApplicationDbInitializer>();
+        await initializer.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred during database initialization.");
+    }
+}
