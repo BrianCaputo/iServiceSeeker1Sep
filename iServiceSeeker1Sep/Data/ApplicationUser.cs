@@ -14,7 +14,13 @@ namespace iServiceSeeker1Sep.Data
         EndUser,
         ServiceProvider
     }
-
+    public enum AuthenticationMethod
+    {
+        Local,
+        Google,
+        LinkedIn,
+        Microsoft
+    }
     public class ApplicationUser : IdentityUser
     {
         // --- Universal Profile Data ---
@@ -35,11 +41,41 @@ namespace iServiceSeeker1Sep.Data
         public bool IsProfileComplete { get; set; } = false;
         public UserType UserType { get; set; } = UserType.NotSet;
 
+        // --- Authentication Tracking ---
+        public AuthenticationMethod PrimaryAuthMethod { get; set; } = AuthenticationMethod.Local;
+        public DateTime PrimaryAuthSetAt { get; set; } = DateTime.UtcNow;
+
+        // --- Password Management ---
+        public bool HasLocalPassword { get; set; } = false;
+        public DateTime? LocalPasswordAddedAt { get; set; }
+
+        // --- Email Confirmation Logic ---
+        public bool InitialEmailConfirmed { get; set; } = false; // Tracks if INITIAL registration was confirmed
 
         public string FullName => $"{FirstName} {LastName}";
+        // Helper methods
+        public bool RequiresEmailConfirmation => PrimaryAuthMethod == AuthenticationMethod.Local && !InitialEmailConfirmed;
+        public bool IsExternalPrimary => PrimaryAuthMethod != AuthenticationMethod.Local;
+        public bool HasMultipleAuthMethods => HasLocalPassword && UserLogins.Any();
+
         // Navigation properties
         public ICollection<CompanyMembership> CompanyMemberships { get; set; } = new List<CompanyMembership>();
         public EndUserProfile? EndUserProfile { get; set; }
+
+        // This tracks external logins - built into Identity
+        public virtual ICollection<IdentityUserLogin<string>> UserLogins { get; set; } = new List<IdentityUserLogin<string>>();
+    }
+
+    public class UserAuthenticationHistory
+    {
+        public int Id { get; set; }
+        public string UserId { get; set; } = string.Empty;
+        public ApplicationUser User { get; set; } = null!;
+        public AuthenticationMethod Method { get; set; }
+        public string? ExternalProvider { get; set; } // "Google", "LinkedIn"
+        public DateTime AddedAt { get; set; }
+        public DateTime? RemovedAt { get; set; }
+        public bool IsActive { get; set; } = true;
     }
     public class EndUserProfile
     {

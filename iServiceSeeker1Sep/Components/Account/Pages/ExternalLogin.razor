@@ -7,48 +7,114 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using iServiceSeeker1Sep.Data
+@using iServiceSeeker1Sep.Services
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
-@inject IEmailSender<ApplicationUser> EmailSender
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
+@inject AuthMethodLinkingService LinkingService
 
-<PageTitle>Register</PageTitle>
+<PageTitle>External Login</PageTitle>
 
 <StatusMessage Message="@message" />
-<h1>Register</h1>
-<h2>Associate your @ProviderDisplayName account.</h2>
-<hr />
 
-<div  class="alert alert-info">
-    You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
-    Please enter an email address for this site below and click the Register button to finish
-    logging in.
-</div>
+@if (isLinkingMode)
+{
+    <h1>Link External Account</h1>
+    <h2>Link your @ProviderDisplayName account to your existing profile.</h2>
 
-<div class="row">
-    <div class="col-md-4">
-        <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="email" placeholder="Please enter your email." />
-                <label for="Input.Email" class="form-label">Email</label>
-                <ValidationMessage For="() => Input.Email" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
+    <div class="alert alert-info">
+        You're about to link your <strong>@ProviderDisplayName</strong> account to your existing profile.
+        This will allow you to sign in using either method in the future.
     </div>
-</div>
+
+    <div class="d-flex gap-3">
+        <button type="button" class="btn btn-primary" @onclick="ConfirmLinking">
+            Yes, Link Account
+        </button>
+        <a href="/Account/Manage" class="btn btn-secondary">Cancel</a>
+    </div>
+}
+else
+{
+    <h1>Register</h1>
+    <h2>Associate your @ProviderDisplayName account.</h2>
+    <hr />
+
+    <div class="alert alert-info">
+        You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
+        @if (existingUserWithEmail != null)
+        {
+            <div class="mt-2">
+                <strong>We found an existing account with this email address.</strong>
+                You can either link this @ProviderDisplayName account to your existing profile,
+                or create a separate account with a different email.
+            </div>
+        }
+        else
+        {
+            <div class="mt-2">
+                Please confirm your email address below and click Register to finish logging in.
+            </div>
+        }
+    </div>
+
+    @if (existingUserWithEmail != null)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Link to Existing Account</h5>
+                <p class="card-text">
+                    Link this @ProviderDisplayName account to your existing profile for <strong>@existingUserWithEmail.Email</strong>.
+                    You'll be able to sign in using either method.
+                </p>
+                <button type="button" class="btn btn-primary" @onclick="() => LinkToExistingAccount(existingUserWithEmail)">
+                    Link Accounts
+                </button>
+            </div>
+        </div>
+
+        <div class="text-center mb-3">
+            <span class="text-muted">— OR —</span>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-6">
+            <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
+
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control"
+                               autocomplete="email" placeholder="Please enter your email." />
+                    <label for="Input.Email" class="form-label">Email</label>
+                    <ValidationMessage For="() => Input.Email" />
+                </div>
+
+                <button type="submit" class="w-100 btn btn-lg btn-success" disabled="@isProcessing">
+                    @if (isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Create New Account
+                </button>
+            </EditForm>
+        </div>
+    </div>
+}
 
 @code {
     public const string LoginCallbackAction = "LoginCallback";
 
     private string? message;
     private ExternalLoginInfo? externalLoginInfo;
+    private ApplicationUser? existingUserWithEmail;
+    private bool isLinkingMode = false;
+    private bool isProcessing = false;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -90,20 +156,15 @@
                 return;
             }
 
-            // We should only reach this page via the login callback, so redirect back to
-            // the login page if we get here some other way.
             RedirectManager.RedirectTo("Account/Login");
         }
     }
 
     private async Task OnLoginCallbackAsync()
     {
-        if (externalLoginInfo is null)
-        {
-            RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information.", HttpContext);
-        }
+        if (externalLoginInfo is null) return;
 
-        // Sign in the user with this external login provider if the user already has a login.
+        // Try to sign in existing user
         var result = await SignInManager.ExternalLoginSignInAsync(
             externalLoginInfo.LoginProvider,
             externalLoginInfo.ProviderKey,
@@ -112,8 +173,7 @@
 
         if (result.Succeeded)
         {
-            Logger.LogInformation(
-                "{Name} logged in with {LoginProvider} provider.",
+            Logger.LogInformation("{Name} logged in with {LoginProvider} provider.",
                 externalLoginInfo.Principal.Identity?.Name,
                 externalLoginInfo.LoginProvider);
             RedirectManager.RedirectTo(ReturnUrl);
@@ -123,25 +183,97 @@
             RedirectManager.RedirectTo("Account/Lockout");
         }
 
-        // If the user does not have an account, then ask the user to create an account.
+        // Check if we're in linking mode (user is already signed in)
+        var currentUser = await UserManager.GetUserAsync(HttpContext.User);
+        if (currentUser != null)
+        {
+            isLinkingMode = true;
+            StateHasChanged();
+            return;
+        }
+
+        // Pre-populate email and check for existing user
         if (externalLoginInfo.Principal.HasClaim(c => c.Type == ClaimTypes.Email))
         {
-            Input.Email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+            var email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email);
+            Input.Email = email ?? "";
+
+            if (!string.IsNullOrEmpty(email))
+            {
+                existingUserWithEmail = await UserManager.FindByEmailAsync(email);
+            }
         }
+    }
+
+    private async Task ConfirmLinking()
+    {
+        if (externalLoginInfo is null) return;
+
+        isProcessing = true;
+        var currentUser = await UserManager.GetUserAsync(HttpContext.User);
+
+        if (currentUser == null)
+        {
+            message = "Error: You must be signed in to link accounts.";
+            isProcessing = false;
+            return;
+        }
+
+        var result = await LinkingService.LinkExternalAccountAsync(currentUser, externalLoginInfo);
+
+        if (result.Succeeded)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage",
+                $"Your {ProviderDisplayName} account has been linked successfully.", HttpContext);
+        }
+        else
+        {
+            message = $"Error linking account: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        }
+
+        isProcessing = false;
+    }
+
+    private async Task LinkToExistingAccount(ApplicationUser existingUser)
+    {
+        if (externalLoginInfo is null) return;
+
+        isProcessing = true;
+
+        var result = await LinkingService.LinkExternalAccountAsync(existingUser, externalLoginInfo);
+
+        if (result.Succeeded)
+        {
+            await SignInManager.SignInAsync(existingUser, isPersistent: false, externalLoginInfo.LoginProvider);
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else
+        {
+            message = $"Error linking to existing account: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        }
+
+        isProcessing = false;
     }
 
     private async Task OnValidSubmitAsync()
     {
-        if (externalLoginInfo is null)
-        {
-            RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information during confirmation.", HttpContext);
-        }
+        if (externalLoginInfo is null) return;
 
+        isProcessing = true;
         var emailStore = GetEmailStore();
         var user = CreateUser();
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+        // Set primary auth method for external registration
+        user.PrimaryAuthMethod = GetAuthenticationMethod(externalLoginInfo.LoginProvider);
+        user.PrimaryAuthSetAt = DateTime.UtcNow;
+        user.EmailConfirmed = true; // External auth users don't need email confirmation
+        user.InitialEmailConfirmed = true;
+
+        // Extract profile info from external provider
+        ExtractProfileFromExternalProvider(user, externalLoginInfo);
 
         var result = await UserManager.CreateAsync(user);
         if (result.Succeeded)
@@ -149,22 +281,7 @@
             result = await UserManager.AddLoginAsync(user, externalLoginInfo);
             if (result.Succeeded)
             {
-                Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
-
-                var userId = await UserManager.GetUserIdAsync(user);
-                var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-
-                var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-                    NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-                    new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
-                await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-                // If account confirmation is required, we need to show the link if we don't have a real email sender
-                if (UserManager.Options.SignIn.RequireConfirmedAccount)
-                {
-                    RedirectManager.RedirectTo("Account/RegisterConfirmation", new() { ["email"] = Input.Email });
-                }
+                Logger.LogInformation("User created account using {Name} provider.", externalLoginInfo.LoginProvider);
 
                 await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
                 RedirectManager.RedirectTo(ReturnUrl);
@@ -172,6 +289,38 @@
         }
 
         message = $"Error: {string.Join(",", result.Errors.Select(error => error.Description))}";
+        isProcessing = false;
+    }
+
+    private void ExtractProfileFromExternalProvider(ApplicationUser user, ExternalLoginInfo info)
+    {
+        var givenName = info.Principal.FindFirstValue(ClaimTypes.GivenName);
+        var surname = info.Principal.FindFirstValue(ClaimTypes.Surname);
+        var fullName = info.Principal.FindFirstValue(ClaimTypes.Name);
+
+        if (!string.IsNullOrEmpty(givenName))
+            user.FirstName = givenName;
+        else if (!string.IsNullOrEmpty(fullName))
+        {
+            var parts = fullName.Split(' ', 2);
+            user.FirstName = parts[0];
+            if (parts.Length > 1)
+                user.LastName = parts[1];
+        }
+
+        if (!string.IsNullOrEmpty(surname))
+            user.LastName = surname;
+    }
+
+    private AuthenticationMethod GetAuthenticationMethod(string provider)
+    {
+        return provider.ToLower() switch
+        {
+            "google" => AuthenticationMethod.Google,
+            "linkedin" => AuthenticationMethod.LinkedIn,
+            "microsoft" => AuthenticationMethod.Microsoft,
+            _ => AuthenticationMethod.Local
+        };
     }
 
     private ApplicationUser CreateUser()
@@ -182,8 +331,7 @@
         }
         catch
         {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor");
+            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. ");
         }
     }
 

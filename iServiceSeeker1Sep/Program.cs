@@ -71,9 +71,31 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    // Email confirmation required for local registration only
+    options.SignIn.RequireConfirmedAccount = true;
+
+    // Password requirements
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 6;
+
+    // User requirements
+    options.User.RequireUniqueEmail = true;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+// Register identity linking services
+builder.Services.AddScoped<IUserConfirmation<ApplicationUser>, IdentityLinkingUserConfirmation>();
+builder.Services.AddScoped<AuthMethodLinkingService>();
 
 //builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
@@ -88,13 +110,6 @@ builder.Services.Configure<AuthMessageSenderOptions>(builder.Configuration);
 builder.Services.AddScoped<ApplicationDbInitializer>();
 
 var app = builder.Build();
-
-//using (var scope = app.Services.CreateScope())
-//{
-//    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//    context.Database.EnsureCreated();
-//    //context.Database.EnsureCreated(); // This creates the database and tables
-//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -120,8 +135,8 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
         // WARNING: This is for development only. It deletes the database on every startup.
-     //   context.Database.EnsureDeleted();
-       // context.Database.EnsureCreated();
+        //context.Database.EnsureDeleted();
+        //context.Database.EnsureCreated();
 
         // Seed the "Admin" role into the database if it doesn't exist.
         if (!await roleManager.RoleExistsAsync("Admin"))
