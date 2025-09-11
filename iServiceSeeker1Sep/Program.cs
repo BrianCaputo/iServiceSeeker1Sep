@@ -96,6 +96,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 // Register identity linking services
 builder.Services.AddScoped<IUserConfirmation<ApplicationUser>, IdentityLinkingUserConfirmation>();
 builder.Services.AddScoped<AuthMethodLinkingService>();
+builder.Services.AddScoped<IUserTrackingService, UserTrackingService>();
+builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 
 //builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
