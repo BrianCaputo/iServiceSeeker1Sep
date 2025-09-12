@@ -198,22 +198,19 @@ namespace iServiceSeeker1Sep.Data
     {
         public Guid Id { get; set; } // Primary Key
         public string CompanyName { get; set; } = string.Empty;
-        public string? LicenseNumber { get; set; }
-        public string? InsuranceProvider { get; set; }
-        public bool IsVerified { get; set; }
-
-        // Address Information
-        public string? StreetAddress { get; set; }
-        public string? City { get; set; }
-        public string? State { get; set; }
-        public string? PostalCode { get; set; }
+        public string Website { get; set; } = string.Empty;
 
         // --- Relationships ---
         public ICollection<CompanyMembership> Members { get; set; } = new List<CompanyMembership>();
+        public ICollection<Address> Addresses { get; set; } = new List<Address>();
+
         public ICollection<ServiceCategory> ServiceCategories { get; set; } = new List<ServiceCategory>();
         [StringLength(8)]
+
         public string? InviteCode { get; set; }
 
+        public DateTime CreationDate { get; set; } = DateTime.UtcNow;
+        public bool IsVerified { get; set; }
     }
     public class ServiceProviderProfile
     {
@@ -228,7 +225,7 @@ namespace iServiceSeeker1Sep.Data
 
         public bool IsVerified { get; set; } = false;
         public DateTime? VerifiedAt { get; set; }
-        [Precision(8,2)]
+        [Precision(8, 2)]
         public decimal ServiceRadius { get; set; } = 50; // miles
 
         [StringLength(1000)]
@@ -260,7 +257,35 @@ namespace iServiceSeeker1Sep.Data
         [StringLength(500)]
         public string? Description { get; set; }
         public bool IsActive { get; set; } = true;
+        public string? UNSPSCCode { get; set; } // Optional UNSPSC code for standardization
+    }
+    /// <summary>
+    /// Types of service areas
+    /// </summary>
+    public enum ServiceAreaType
+    {
+        [Display(Name = "City")]
+        City = 1,
 
-        public List<ServiceProviderServiceArea> ServiceProviderServiceAreas { get; set; } = new();
+        [Display(Name = "County")]
+        County = 2,
+
+        [Display(Name = "State")]
+        State = 3,
+
+        [Display(Name = "ZIP Code")]
+        ZipCode = 4,
+
+        [Display(Name = "Radius (Miles)")]
+        Radius = 5,
+
+        [Display(Name = "Metropolitan Area")]
+        Metropolitan = 6,
+
+        [Display(Name = "Regional")]
+        Regional = 7,
+
+        [Display(Name = "National")]
+        National = 8
     }
 }
