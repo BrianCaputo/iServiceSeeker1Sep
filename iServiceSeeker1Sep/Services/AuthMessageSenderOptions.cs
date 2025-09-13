@@ -1,4 +1,4 @@
-﻿namespace iServiceSeeker1Sep.Services;
+﻿namespace ServiceSeeker.Services;
 
 public class AuthMessageSenderOptions
 {

@@ -1,9 +1,8 @@
 using AspNet.Security.OAuth.LinkedIn;
-using iServiceSeeker.Data;
-using iServiceSeeker1Sep.Components;
-using iServiceSeeker1Sep.Components.Account;
-using iServiceSeeker1Sep.Data;
-using iServiceSeeker1Sep.Services;
+using ServiceSeeker.Data;
+using ServiceSeeker.Components;
+using ServiceSeeker.Components.Account;
+using ServiceSeeker.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;

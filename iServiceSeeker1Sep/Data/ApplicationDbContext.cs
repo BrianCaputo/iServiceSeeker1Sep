@@ -1,9 +1,7 @@
-using iServiceSeeker.Data;
-using iServiceSeeker1Sep.Data;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.Reflection.Emit;
+using ServiceSeeker.Data;
+using ServiceProvider = ServiceSeeker.Data.ServiceProvider;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
@@ -12,68 +10,115 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
-    // DbSets for all your custom entities
+    // --- DbSets for all your custom entities ---
+    public DbSet<ApplicationUser> ApplicationUsers { get; set; }
     public DbSet<EndUserProfile> EndUserProfiles { get; set; }
-    public DbSet<Company> Companies { get; set; }
+    public DbSet<ServiceProvider> ServiceProviders { get; set; }
     public DbSet<CompanyMembership> CompanyMemberships { get; set; }
     public DbSet<ServiceCategory> ServiceCategories { get; set; }
-    public DbSet<ServiceProviderProfile> ServiceProviderProfiles { get; set; }
-    public DbSet<ServiceProviderServiceArea> ServiceProviderServiceAreas { get; set; }
+    public DbSet<ProviderServiceArea> ProviderServiceAreas { get; set; }
     public DbSet<Location> Locations { get; set; }
     public DbSet<Address> Addresses { get; set; }
     public DbSet<Country> Countries { get; set; }
     public DbSet<StateProvince> StateProvinces { get; set; }
+    public DbSet<UserAuthenticationHistory> UserAuthenticationHistories { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        // --- Configure the ApplicationUser to EndUserProfile relationship (One-to-One) ---
+        // --- User & Profile Configurations ---
+
+        // One-to-One: ApplicationUser -> EndUserProfile
         builder.Entity<ApplicationUser>()
             .HasOne(au => au.EndUserProfile)
             .WithOne(eup => eup.User)
-            .HasForeignKey<EndUserProfile>(eup => eup.UserId);
+            .HasForeignKey<EndUserProfile>(eup => eup.UserID);
 
-        // --- Configure the CompanyMembership (Many-to-Many between ApplicationUser and Company) ---
+        // One-to-Many: ApplicationUser -> UserAuthenticationHistory
+        builder.Entity<UserAuthenticationHistory>()
+            .HasOne(h => h.User)
+            .WithMany() // No inverse navigation property on ApplicationUser
+            .HasForeignKey(h => h.UserID);
+
+
+        // --- Company & Membership (Many-to-Many Join) ---
+
+        // Define primary key for the join table
         builder.Entity<CompanyMembership>()
-            .HasKey(cm => cm.Id); // Use the Guid Id as the primary key
+            .HasKey(cm => cm.ID);
 
+        // Many-to-One: CompanyMembership -> ApplicationUser
         builder.Entity<CompanyMembership>()
             .HasOne(cm => cm.ApplicationUser)
-            .WithMany(au => au.CompanyMemberships) // Correctly links to the collection on ApplicationUser
+            .WithMany(au => au.CompanyMemberships)
             .HasForeignKey(cm => cm.ApplicationUserId);
 
+        // Many-to-One: CompanyMembership -> ServiceProvider (Company)
         builder.Entity<CompanyMembership>()
-            .HasOne(cm => cm.Company)
-            .WithMany(c => c.Members) // Correctly links to the collection on Company
-            .HasForeignKey(cm => cm.CompanyId);
-
-        // --- Configure the ServiceProviderServiceArea (Many-to-Many between ServiceProviderProfile and ServiceCategory) ---
-        builder.Entity<ServiceProviderServiceArea>()
-           .HasKey(spsa => spsa.Id);
-        builder.Entity<ServiceProviderServiceArea>()
-            .HasOne(spsa => spsa.ServiceProviderProfile)
-            .WithMany(sp => sp.ServiceAreas)
-            .HasForeignKey(spsa => spsa.ServiceProviderProfileId);
-
-        builder.Entity<ServiceProviderServiceArea>()
-            .HasOne(spsa => spsa.ServiceCategory)
-            .WithMany(sc => sc.ServiceProviderServiceAreas)
-            .HasForeignKey(spsa => spsa.ServiceCategoryId);
+            .HasOne(cm => cm.ServiceProvider)
+            .WithMany(sp => sp.Members)
+            .HasForeignKey(cm => cm.ServiceProviderID);
 
 
-        // --- Configure the Location and Address (Table-per-Hierarchy Inheritance) ---
+        // --- Service Provider & Service Area (Many-to-Many Join) ---
+
+        // Define primary key for the join table
+        builder.Entity<ProviderServiceArea>()
+            .HasKey(psa => psa.ID);
+
+        // Many-to-One: ProviderServiceArea -> ServiceProvider
+        // Note: Your ProviderServiceArea model currently doesn't link back to ServiceProvider.
+        // If you add 'public Guid ServiceProviderId { get; set; }' and a navigation property,
+        // you would configure that relationship here. For now, we only configure the existing part.
+
+        // Many-to-One: ProviderServiceArea -> ServiceCategory
+        builder.Entity<ProviderServiceArea>()
+            .HasOne(psa => psa.ServiceCategory)
+            .WithMany() // ServiceCategory doesn't have a collection of ProviderServiceArea
+            .HasForeignKey(psa => psa.ServiceCategoryID);
+
+
+        // --- Location & Address Configurations (Table-per-Hierarchy Inheritance) ---
+
+        // Define the base table for the inheritance hierarchy
         builder.Entity<Location>()
-            .ToTable("Locations"); // Explicitly name the table for clarity
+            .ToTable("Locations");
 
+        // Define the derived type
         builder.Entity<Address>()
             .HasBaseType<Location>();
 
+        // --- Address Ownership Configurations ---
 
-        // --- Configure StateProvince to Country relationship (Many-to-One) ---
+        // One-to-Many: EndUserProfile -> Address
+        builder.Entity<EndUserProfile>()
+            .HasMany(eup => eup.Address)
+            .WithOne() // Address has no navigation property back to EndUserProfile
+            .HasForeignKey(a => a.EndUserProfileID)
+            .OnDelete(DeleteBehavior.Cascade); // If a user profile is deleted, their addresses are deleted too.
+
+        // One-to-Many: ServiceProvider -> Address
+        builder.Entity<ServiceProvider>()
+            .HasMany(sp => sp.Addresses)
+            .WithOne() // Address has no navigation property back to ServiceProvider
+            .HasForeignKey(a => a.ServiceProviderID) // Using the FK you defined
+            .OnDelete(DeleteBehavior.Cascade); // If a service provider is deleted, their addresses are also deleted.
+
+
+        // --- Lookup Table Configurations ---
+
+        // Many-to-One: StateProvince -> Country
         builder.Entity<StateProvince>()
             .HasOne(sp => sp.Country)
-            .WithMany() // A country can have many states/provinces. No navigation property back needed.
+            .WithMany() // Country does not have a navigation property for StateProvinces
             .HasForeignKey(sp => sp.CountryID);
+
+        // Many-to-One: Location -> StateProvince
+        builder.Entity<Location>()
+            .HasOne(l => l.StateProvince)
+            .WithMany() // StateProvince does not have a navigation property for Locations
+            .HasForeignKey(l => l.StateProvinceID);
     }
 }

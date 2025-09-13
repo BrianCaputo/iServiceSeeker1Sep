@@ -1,9 +1,9 @@
-﻿using iServiceSeeker1Sep.Data;
+﻿using ServiceSeeker.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
-namespace iServiceSeeker1Sep.Services
+namespace ServiceSeeker.Services
 {
     public class CustomSignInManager : SignInManager<ApplicationUser>
     {

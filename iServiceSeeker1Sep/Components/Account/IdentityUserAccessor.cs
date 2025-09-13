@@ -1,7 +1,7 @@
-using iServiceSeeker1Sep.Data;
+using ServiceSeeker.Data;
 using Microsoft.AspNetCore.Identity;
 
-namespace iServiceSeeker1Sep.Components.Account
+namespace ServiceSeeker.Components.Account
 {
     internal sealed class IdentityUserAccessor(UserManager<ApplicationUser> userManager, IdentityRedirectManager redirectManager)
     {

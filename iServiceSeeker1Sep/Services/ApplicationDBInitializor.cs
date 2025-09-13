@@ -1,9 +1,9 @@
-﻿using iServiceSeeker1Sep.Data;
-using iServiceSeeker1Sep.Services;
+﻿using ServiceSeeker.Data;
+using ServiceSeeker.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
-namespace iServiceSeeker.Data
+namespace ServiceSeeker.Data
 {
     /// <summary>
     /// Service responsible for seeding the database with essential data at application startup.

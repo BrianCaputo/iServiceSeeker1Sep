@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using System.Text.Json;
-using iServiceSeeker1Sep.Components.Account.Pages;
-using iServiceSeeker1Sep.Components.Account.Pages.Manage;
-using iServiceSeeker1Sep.Data;
+using ServiceSeeker.Components.Account.Pages;
+using ServiceSeeker.Components.Account.Pages.Manage;
+using ServiceSeeker.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;

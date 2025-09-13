@@ -1,6 +1,6 @@
-﻿@page "/complete-profile"
+﻿@page "/complete-profile2"
 
-@using iServiceSeeker1Sep.Data
+@using ServiceSeeker.Data
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
@@ -74,7 +74,24 @@
                                     else if (currentStep == 2 && Model.UserType == UserType.EndUser)
                                     {
                                         <div class="step-content">
-                                            <h3 class="text-center mb-4">Your Address Information</h3>
+                                            <h3 class="text-center mb-4">Your Personal Information</h3>
+
+                                            <!-- Personal Information Section -->
+                                            <div class="row mb-4">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="firstName" class="form-label">First Name *</label>
+                                                    <InputText @bind-Value="Model.FirstName" class="form-control" id="firstName" placeholder="Enter your first name" />
+                                                    <ValidationMessage For="@(() => Model.FirstName)" class="text-danger" />
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="lastName" class="form-label">Last Name *</label>
+                                                    <InputText @bind-Value="Model.LastName" class="form-control" id="lastName" placeholder="Enter your last name" />
+                                                    <ValidationMessage For="@(() => Model.LastName)" class="text-danger" />
+                                                </div>
+                                            </div>
+
+                                            <h4 class="mb-3">Your Address Information</h4>
 
                                             <div class="row">
                                                 <div class="col-md-6 mb-3">
@@ -90,9 +107,9 @@
                                                 </div>
 
                                                 <div class="col-md-6 mb-3">
-                                                    <label for="state" class="form-label">State/Province *</label>
+                                                    <label for="state" class="form-label">@StateProvinceLabel</label>
                                                     <InputSelect @bind-Value="Model.StateProvinceId" class="form-select" disabled="@(filteredStates.Count == 0)" id="state">
-                                                        <option value="0">@(Model.CountryId == 0 ? "Select a country first" : "Select state/province...")</option>
+                                                        <option value="0">@(Model.CountryId == 0 ? "Select a country first" : @StateProvinceLabel)</option>
                                                         @if (Model.CountryId > 0)
                                                         {
                                                             @foreach (var state in filteredStates)
@@ -124,8 +141,8 @@
                                                 </div>
 
                                                 <div class="col-md-6 mb-3">
-                                                    <label for="postal" class="form-label">Postal/Zip Code *</label>
-                                                    <InputText @bind-Value="Model.PostalCode" class="form-control" id="postal" placeholder="12345 or A1A 1A1" />
+                                                    <label for="postal" class="form-label">@PostalCodeLabel</label>
+                                                    <InputText @bind-Value="Model.PostalCode" class="form-control" id="postal" placeholder="@PostalCodePlaceholder" />
                                                     <ValidationMessage For="@(() => Model.PostalCode)" class="text-danger" />
                                                 </div>
                                             </div>
@@ -152,6 +169,21 @@
                                     {
                                         <div class="step-content">
                                             <h3 class="text-center mb-4">Service Provider Setup</h3>
+
+                                            <!-- Personal Information Section -->
+                                            <div class="row mb-4">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="firstName" class="form-label">First Name *</label>
+                                                    <InputText @bind-Value="Model.FirstName" class="form-control" id="firstName" placeholder="Enter your first name" />
+                                                    <ValidationMessage For="@(() => Model.FirstName)" class="text-danger" />
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="lastName" class="form-label">Last Name *</label>
+                                                    <InputText @bind-Value="Model.LastName" class="form-control" id="lastName" placeholder="Enter your last name" />
+                                                    <ValidationMessage For="@(() => Model.LastName)" class="text-danger" />
+                                                </div>
+                                            </div>
 
                                             <div class="mb-4">
                                                 <p class="text-center">Choose how you would like to get started:</p>
@@ -197,6 +229,44 @@
                                                                placeholder="Enter your invitation code" />
                                                     <ValidationMessage For="@(() => Model.InvitationCode)" class="text-danger" />
                                                     <div class="form-text">Enter the invitation code provided by your company administrator.</div>
+                                                </div>
+                                            }
+                                            else if (Model.SupplierAction == SupplierActionType.Create)
+                                            {
+                                                <div class="card mb-4">
+                                                    <div class="card-header">
+                                                        <h5 class="mb-0">Company Information</h5>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="mb-3">
+                                                            <label for="companyName" class="form-label">Company Name *</label>
+                                                            <InputText @bind-Value="Model.CompanyName" class="form-control" id="companyName"
+                                                                       placeholder="Enter your company name" />
+                                                            <ValidationMessage For="@(() => Model.CompanyName)" class="text-danger" />
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="companyWebsite" class="form-label">Website (Optional)</label>
+                                                            <InputText @bind-Value="Model.CompanyWebsite" class="form-control" id="companyWebsite"
+                                                                       placeholder="https://www.yourcompany.com" />
+                                                            <ValidationMessage For="@(() => Model.CompanyWebsite)" class="text-danger" />
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="dunsNumber" class="form-label">DUNS Number (Optional)</label>
+                                                            <InputText @bind-Value="Model.DUNSNumber" class="form-control" id="dunsNumber"
+                                                                       placeholder="123456789" maxlength="9" />
+                                                            <ValidationMessage For="@(() => Model.DUNSNumber)" class="text-danger" />
+                                                            <div class="form-text">9-digit D-U-N-S Number for business identification</div>
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label for="description" class="form-label">Company Description (Optional)</label>
+                                                            <InputTextArea @bind-Value="Model.Description" class="form-control" id="description"
+                                                                           rows="3" maxlength="1000" placeholder="Brief description of your company and services..." />
+                                                            <div class="form-text">@((Model.Description?.Length ?? 0))/1000 characters</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             }
 
@@ -288,6 +358,16 @@
         {
             countries = await DbContext.Countries.ToListAsync();
             states = await DbContext.StateProvinces.ToListAsync();
+
+            // Pre-populate user's existing name if available
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = await UserManager.GetUserAsync(authState.User);
+
+            if (user != null)
+            {
+                Model.FirstName = user.FirstName;
+                Model.LastName = user.LastName;
+            }
         }
         catch (Exception ex)
         {
@@ -312,7 +392,11 @@
     private void GoBackToStep1()
     {
         currentStep = 1;
+        var firstName = Model.FirstName;
+        var lastName = Model.LastName;
         Model = new ProfileCompleteModel();
+        Model.FirstName = firstName; // Preserve name data
+        Model.LastName = lastName;
         StateHasChanged();
     }
 
@@ -341,6 +425,25 @@
         return Model.SupplierAction == SupplierActionType.Create ? "btn btn-success" : "btn btn-outline-success";
     }
 
+    private string StateProvinceLabel => GetLabel(AddressLabel.StateLabel);
+    private string PostalCodeLabel => GetLabel(AddressLabel.PostalCodeLabel);
+    private string PostalCodePlaceholder => GetLabel(AddressLabel.PostalCodeWatermark);
+
+    private string GetLabel(AddressLabel label)
+    {
+        var model = Model.CountryId;
+        var result = label switch
+        {
+            AddressLabel.StateLabel => model switch { 1 => "State", 2 => "Province", 3 => "Country", _ => "State/Province" },
+            AddressLabel.PostalCodeLabel => model switch { 1 => "Zip Code", 2 => "Postal Code", 3 => "Post Code", _ => "Postal Code" },
+            AddressLabel.PostalCodeWatermark => model switch { 1 => "12345", 2 => "A1A 1A1", 3 => "A1A 1A1", _ => "12345 or A1A 1A1" },
+            _ => ""
+        };
+        return result;
+    }
+
+    public enum AddressLabel { StateLabel = 0, PostalCodeLabel = 1, PostalCodeWatermark = 2 }   
+
     private async Task HandleValidSubmit()
     {
         isLoading = true;
@@ -357,32 +460,74 @@
 
         try
         {
+            // Update user's basic information
             user.UserType = Model.UserType;
+            user.FirstName = Model.FirstName ?? string.Empty;
+            user.LastName = Model.LastName ?? string.Empty;
 
             if (Model.UserType == UserType.EndUser)
             {
+                // Create EndUserProfile first
+                var endUserProfile = new EndUserProfile
+                {
+                    ID = Guid.NewGuid(),
+                    UserID = user.Id
+                };
+
+                DbContext.EndUserProfiles.Add(endUserProfile);
+                await DbContext.SaveChangesAsync(); // Save to get the profile ID
+
+                // Create address linked to the profile
                 var address = new Address
                 {
+                    ID = Guid.NewGuid(),
                     Name = "Primary",
-                    StreetLine1 = Model.StreetLine1,
+                    StreetLine1 = Model.StreetLine1 ?? string.Empty,
                     StreetLine2 = Model.StreetLine2,
-                    City = Model.City,
-                    PostalCode = Model.PostalCode,
+                    City = Model.City ?? string.Empty,
+                    PostalCode = Model.PostalCode ?? string.Empty,
                     StateProvinceID = Model.StateProvinceId,
+                    Purpose = AddressPurpose.Residiential,
+                    EndUserProfileID = endUserProfile.ID
                 };
 
                 DbContext.Addresses.Add(address);
-                await DbContext.SaveChangesAsync();
             }
             else if (Model.UserType == UserType.ServiceProvider)
             {
                 if (Model.SupplierAction == SupplierActionType.Join)
                 {
                     // TODO: Validate invitation code and link to existing company
+                    // For now, just log that this path was taken
+                    Logger.LogInformation("User {UserId} chose to join existing company with code: {InvitationCode}",
+                                        user.Id, Model.InvitationCode);
                 }
                 else if (Model.SupplierAction == SupplierActionType.Create)
                 {
-                    // TODO: Create new company and make user the admin
+                    // Create new ServiceProvider company
+                    var serviceProvider = new ServiceProvider
+                    {
+                        ID = Guid.NewGuid(),
+                        CompanyName = Model.CompanyName ?? string.Empty,
+                        Website = Model.CompanyWebsite ?? string.Empty,
+                        DUNSNumber = Model.DUNSNumber ?? string.Empty,
+                        Description = Model.Description,
+                        CreationDate = DateTime.UtcNow,
+                        IsVerified = false
+                    };
+
+                    DbContext.ServiceProviders.Add(serviceProvider);
+
+                    // Create company membership making the user an owner
+                    var membership = new CompanyMembership
+                    {
+                        ID = Guid.NewGuid(),
+                        ApplicationUserId = user.Id,
+                        ServiceProviderID = serviceProvider.ID,
+                        Role = UserRole.Owner
+                    };
+
+                    DbContext.CompanyMemberships.Add(membership);
                 }
             }
 
@@ -391,6 +536,7 @@
 
             if (result.Succeeded)
             {
+                await DbContext.SaveChangesAsync();
                 NavigationManager.NavigateTo("/", forceLoad: true);
             }
             else
@@ -415,6 +561,14 @@
         [Range(1, int.MaxValue, ErrorMessage = "Please select a valid role.")]
         public UserType UserType { get; set; } = UserType.NotSet;
 
+        [Required(ErrorMessage = "First name is required.")]
+        [StringLength(50, ErrorMessage = "First name cannot exceed 50 characters.")]
+        public string? FirstName { get; set; }
+
+        [Required(ErrorMessage = "Last name is required.")]
+        [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters.")]
+        public string? LastName { get; set; }
+
         [RequiredIf(nameof(UserType), UserType.EndUser, ErrorMessage = "Street address is required.")]
         public string? StreetLine1 { get; set; }
 
@@ -438,6 +592,20 @@
 
         [RequiredIf(nameof(SupplierAction), SupplierActionType.Join, ErrorMessage = "Invitation code is required to join a company.")]
         public string? InvitationCode { get; set; }
+
+        // Service Provider Company fields
+        [RequiredIf(nameof(SupplierAction), SupplierActionType.Create, ErrorMessage = "Company name is required.")]
+        [StringLength(200, ErrorMessage = "Company name cannot exceed 200 characters.")]
+        public string? CompanyName { get; set; }
+
+        [Url(ErrorMessage = "Please enter a valid website URL.")]
+        public string? CompanyWebsite { get; set; }
+
+        [RegularExpression(@"^\d{9}$", ErrorMessage = "DUNS number must be exactly 9 digits.")]
+        public string? DUNSNumber { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
+        public string? Description { get; set; }
     }
 
     public enum SupplierActionType { NotSet, Join, Create }

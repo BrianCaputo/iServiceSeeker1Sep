@@ -4,11 +4,10 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>aspnet-iServiceSeeker1Sep-2b90a15f-236d-4805-a60f-47cc9b4d07a7</UserSecretsId>
+    <UserSecretsId>aspnet-ServiceSeeker-2b90a15f-236d-4805-a60f-47cc9b4d07a7</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="Components\Account\Pages\CompleteProfile2.razor" />
     <Content Remove="Components\Account\Pages\CompleteProfile3.razor" />
   </ItemGroup>
 

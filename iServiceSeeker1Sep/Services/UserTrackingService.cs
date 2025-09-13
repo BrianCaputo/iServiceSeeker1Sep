@@ -1,7 +1,7 @@
-﻿using iServiceSeeker1Sep.Data;
+﻿using ServiceSeeker.Data;
 using Microsoft.AspNetCore.Identity;
 
-namespace iServiceSeeker1Sep.Services
+namespace ServiceSeeker.Services
 {
     public interface IUserTrackingService
     {

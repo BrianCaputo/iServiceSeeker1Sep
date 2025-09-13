@@ -1,7 +1,7 @@
-﻿using iServiceSeeker1Sep.Data;
+﻿using ServiceSeeker.Data;
 using System.Collections.Generic;
 
-namespace iServiceSeeker1Sep.Services
+namespace ServiceSeeker.Services
 {
     public static class LocationDataSeeder
     {

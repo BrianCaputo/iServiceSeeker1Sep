@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
-namespace iServiceSeeker1Sep.Services
+namespace ServiceSeeker.Services
 {    public class EmailSenderAdapter<TUser> : IEmailSender<TUser>
         where TUser : class
     {

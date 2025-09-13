@@ -5,7 +5,7 @@
 @using System.Text
 @using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
-@using iServiceSeeker1Sep.Data
+@using ServiceSeeker.Data
 @using Net.Codecrete.QrCodeGenerator
 
 @inject UserManager<ApplicationUser> UserManager
@@ -167,7 +167,7 @@ else
     private string GenerateQrCodeUri(string email, string unformattedKey)
     {
         // The name of your application. This will be displayed in the authenticator app.
-        const string issuer = "iServiceSeeker1Sep";
+        const string issuer = "ServiceSeeker";
 
         return string.Format(
             CultureInfo.InvariantCulture,

@@ -5,8 +5,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Net;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
-namespace iServiceSeeker1Sep.Data
+namespace ServiceSeeker.Data
 {
+    #region User Related Models
     // Custom enum to define the user's primary role in the application
     public enum UserType
     {
@@ -65,11 +66,10 @@ namespace iServiceSeeker1Sep.Data
         // This tracks external logins - built into Identity
         public virtual ICollection<IdentityUserLogin<string>> UserLogins { get; set; } = new List<IdentityUserLogin<string>>();
     }
-
     public class UserAuthenticationHistory
     {
-        public int Id { get; set; }
-        public string UserId { get; set; } = string.Empty;
+        public int ID { get; set; }
+        public string UserID { get; set; } = string.Empty;
         public ApplicationUser User { get; set; } = null!;
         public AuthenticationMethod Method { get; set; }
         public string? ExternalProvider { get; set; } // "Google", "LinkedIn"
@@ -79,12 +79,11 @@ namespace iServiceSeeker1Sep.Data
     }
     public class EndUserProfile
     {
-        public int Id { get; set; }
-        public string UserId { get; set; } = string.Empty; // Foreign key to ApplicationUser
+        public Guid ID { get; set; }
+        public string UserID { get; set; } = string.Empty; // Foreign key to ApplicationUser
         public ApplicationUser User { get; set; } = null!; // Navigation property
         public ICollection<Address> Address { get; set; } = new List<Address>(); // Allows multiple addresses
     }
-
     public class Country
     {
         [Key]
@@ -97,6 +96,10 @@ namespace iServiceSeeker1Sep.Data
         [Required]
         [StringLength(2)]
         public string Iso2Code { get; set; } = string.Empty; // e.g., "US", "CA"
+
+        [Required]
+        [StringLength(3)]
+        public string Iso3Code { get; set; } = string.Empty; // e.g., "USA", "CAN"
     }
     public class StateProvince
     {
@@ -147,14 +150,11 @@ namespace iServiceSeeker1Sep.Data
         public int StateProvinceID { get; set; }
         [ForeignKey("StateProvinceID")]
         public StateProvince StateProvince { get; set; }
-
-        //[Required]
-        //public int CountryID { get; set; }
-        //[ForeignKey("CountryID")]
-        //public Country Country { get; set; }
     }
     public class Address : Location
     {
+        [Key]
+        public Guid ID { get; set; }
         [Required]
         [StringLength(100)]
         public string Name { get; set; } = string.Empty; // e.g., "Main Office", "Home"
@@ -167,6 +167,11 @@ namespace iServiceSeeker1Sep.Data
 
         [Required]
         public AddressPurpose Purpose { get; set; } // An enum for context
+                                                    // Foreign key for the one-to-many relationship with EndUserProfile
+        public Guid? EndUserProfileID { get; set; }
+
+        // Foreign key for the one-to-one relationship with ServiceProviderProfile
+        public Guid? ServiceProviderID { get; set; }
     }
     public enum AddressPurpose
     {
@@ -176,79 +181,53 @@ namespace iServiceSeeker1Sep.Data
         Residiential,
         Headquarters
     }
-
+    #endregion
+    #region Company
     public class CompanyMembership
     {
-        public Guid Id { get; set; } // Primary Key
+        public Guid ID { get; set; } // Primary Key
 
         // Foreign Key to the User
         public string ApplicationUserId { get; set; }
         public ApplicationUser ApplicationUser { get; set; }
 
         // Foreign Key to the Company
-        public Guid CompanyId { get; set; }
-        public Company Company { get; set; }
+        public Guid ServiceProviderID { get; set; }
+        public ServiceProvider ServiceProvider { get; set; }
 
         // Role of the user within THIS specific company
-        public CompanyRole Role { get; set; } // e.g., Owner, Admin, Employee
+        public UserRole Role { get; set; } // e.g., Owner, Admin, Employee
     }
-    public enum CompanyRole { Owner, Admin, Employee }
-
-    public class Company
+    public enum UserRole { Owner, Admin, Employee }
+    public class ServiceProvider
     {
-        public Guid Id { get; set; } // Primary Key
+        public Guid ID { get; set; } // Primary Key
         public string CompanyName { get; set; } = string.Empty;
         public string Website { get; set; } = string.Empty;
-
+        public DateTime CreationDate { get; set; } = DateTime.UtcNow;
+        public bool IsVerified { get; set; }
+        [StringLength(9)]
+        public string DUNSNumber { get; set; } = string.Empty; // D-U-N-S Number for business identification
+        [StringLength(1000)]
+        public string? Description { get; set; }
         // --- Relationships ---
         public ICollection<CompanyMembership> Members { get; set; } = new List<CompanyMembership>();
         public ICollection<Address> Addresses { get; set; } = new List<Address>();
-
-        public ICollection<ServiceCategory> ServiceCategories { get; set; } = new List<ServiceCategory>();
-        [StringLength(8)]
-
-        public string? InviteCode { get; set; }
-
-        public DateTime CreationDate { get; set; } = DateTime.UtcNow;
-        public bool IsVerified { get; set; }
+        public ICollection<ProviderServiceArea> ProviderServiceArea { get; set; } = new List<ProviderServiceArea>();
     }
-    public class ServiceProviderProfile
+    public class ProviderServiceArea
     {
-        public int Id { get; set; }
-
-        [Required]
-        [StringLength(200)]
-        public string CompanyName { get; set; } = string.Empty;
-        [StringLength(50)]
-        public string? LicenseNumber { get; set; }
-        public Address? Address { get; set; }
-
-        public bool IsVerified { get; set; } = false;
-        public DateTime? VerifiedAt { get; set; }
-        [Precision(8, 2)]
-        public decimal ServiceRadius { get; set; } = 50; // miles
-
-        [StringLength(1000)]
-        public string? Description { get; set; }
-        public string? Website { get; set; }
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public bool IsActive { get; set; } = true;
-
-        public List<ServiceProviderServiceArea> ServiceAreas { get; set; } = new();
-    }
-    public class ServiceProviderServiceArea
-    {
-        public int Id { get; set; }
-        public int ServiceProviderProfileId { get; set; }
-        public ServiceProviderProfile ServiceProviderProfile { get; set; } = null!;
-        public int ServiceCategoryId { get; set; }
+        public int ID { get; set; }
+        //public int ServiceProviderID { get; set; }
+        //public ServiceProvider ServiceProvider { get; set; } = null!;
+        public int ServiceCategoryID { get; set; }
         public ServiceCategory ServiceCategory { get; set; } = null!;
         public bool IsActive { get; set; } = true;
+        public ServiceAreaType ServiceAreaType { get; set; }
     }
     public class ServiceCategory
     {
-        public int Id { get; set; }
+        public int ID { get; set; }
 
         [Required]
         [StringLength(100)]
@@ -288,4 +267,5 @@ namespace iServiceSeeker1Sep.Data
         [Display(Name = "National")]
         National = 8
     }
+    #endregion 
 }

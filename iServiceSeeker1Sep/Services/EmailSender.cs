@@ -1,11 +1,11 @@
-﻿using iServiceSeeker1Sep.Services;
+﻿using ServiceSeeker.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
-namespace iServiceSeeker1Sep.Services;
+namespace ServiceSeeker.Services;
 
 public class EmailSender : IEmailSender
 {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using iServiceSeeker1Sep.Data;
+using ServiceSeeker.Data;
 
-namespace iServiceSeeker1Sep.Services
+namespace ServiceSeeker.Services
 {
     /// <summary>
     /// Handles email confirmation logic for identity linking scenarios

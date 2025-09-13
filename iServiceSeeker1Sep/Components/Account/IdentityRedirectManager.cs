@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 
-namespace iServiceSeeker1Sep.Components.Account
+namespace ServiceSeeker.Components.Account
 {
     internal sealed class IdentityRedirectManager(NavigationManager navigationManager)
     {
